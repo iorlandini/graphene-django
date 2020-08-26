@@ -57,6 +57,7 @@ def convert_form_field_to_float(field):
     return Float(description=field.help_text, required=field.required)
 
 
+@convert_form_field.register(forms.MultipleChoiceField)
 @convert_form_field.register(forms.ModelMultipleChoiceField)
 @convert_form_field.register(GlobalIDMultipleChoiceField)
 def convert_form_field_to_list(field):
