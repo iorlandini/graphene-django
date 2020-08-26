@@ -101,7 +101,7 @@ def test_should_decimal_convert_float():
     assert_conversion(forms.DecimalField, Float)
 
 
-def test_should_multiple_choice_convert_connectionorlist():
+def test_should_model_multiple_choice_convert_connectionorlist():
     field = forms.ModelMultipleChoiceField(queryset=None)
     graphene_type = convert_form_field(field)
     assert isinstance(graphene_type, List)
