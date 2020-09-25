@@ -1,4 +1,5 @@
 from django import forms
+from django.db import models
 from py.test import raises
 
 import graphene
@@ -16,7 +17,9 @@ from graphene import (
     Time,
 )
 
+from ...types import DjangoObjectType
 from ..converter import convert_form_field
+from ..mutation import DjangoFormMutation
 
 
 def assert_conversion(django_field, graphene_field, *args):
@@ -112,3 +115,34 @@ def test_should_manytoone_convert_connectionorlist():
     field = forms.ModelChoiceField(queryset=None)
     graphene_type = convert_form_field(field)
     assert isinstance(graphene_type, ID)
+
+
+def test_form_field_with_choices_convert_enum():
+    class TestModel(models.Model):
+        field = models.CharField(
+            choices=(("choice-0", "Choice 0"), ("choice-1", "Choice 1"))
+        )
+
+    class TestType(DjangoObjectType):
+        class Meta:
+            model = TestModel
+
+    class TestForm(forms.ModelForm):
+        class Meta:
+            model = TestModel
+            fields = ["field"]
+
+    class TestMutation(DjangoFormMutation):
+        class Meta:
+            form_class = TestForm
+
+    schema = graphene.Schema(mutation=TestMutation)
+
+    _type = schema.get_type("TestModelField")
+    assert _type.name == "TestModelField"
+
+    assert _type.values[0].name == "CHOICE_0"
+    assert _type.values[0].value == "choice-0"
+
+    assert _type.values[1].name == "CHOICE_1"
+    assert _type.values[1].value == "choice-1"

@@ -30,7 +30,16 @@ def fields_for_form(form, only_fields, exclude_fields):
         if is_not_in_only or is_excluded:
             continue
 
-        fields[name] = convert_form_field(field)
+        converted = None
+
+        model = hasattr(form, "_meta") and form._meta.model
+        if model:
+            registry = get_global_registry()
+            model_field = getattr(model, name, None)
+            converted = model_field and registry.get_converted_field(model_field.field)
+
+        fields[name] = converted or convert_form_field(field)
+
     return fields
 
 
