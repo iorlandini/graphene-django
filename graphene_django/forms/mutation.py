@@ -13,8 +13,10 @@ from graphene.types.mutation import MutationOptions
 from graphene.types.utils import yank_fields_from_attrs
 from graphene_django.registry import get_global_registry
 
+from ..converter import convert_choice_field_to_enum
 from ..types import ErrorType
 from .converter import convert_form_field
+from .fields import EnumField
 
 
 def fields_for_form(form, only_fields, exclude_fields):
@@ -30,15 +32,22 @@ def fields_for_form(form, only_fields, exclude_fields):
         if is_not_in_only or is_excluded:
             continue
 
-        converted = None
+        if isinstance(field, EnumField):
+            fields[name] = field.enum(
+                description=field.help_text, required=field.required
+            )
+        else:
+            converted = None
 
-        model = hasattr(form, "_meta") and form._meta.model
-        if model:
-            registry = get_global_registry()
-            model_field = getattr(model, name, None)
-            converted = model_field and registry.get_converted_field(model_field.field)
+            model = getattr(form, "_meta", None) and getattr(form._meta, "model", None)
+            if model:
+                registry = get_global_registry()
+                model_field = getattr(model, name, None)
+                converted = model_field and registry.get_converted_field(
+                    model_field.field
+                )
 
-        fields[name] = converted or convert_form_field(field)
+            fields[name] = converted or convert_form_field(field)
 
     return fields
 

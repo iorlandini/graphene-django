@@ -18,7 +18,9 @@ from graphene import (
 )
 
 from ...types import DjangoObjectType
+from ...converter import convert_choices_to_named_enum_with_descriptions
 from ..converter import convert_form_field
+from ..fields import EnumField
 from ..mutation import DjangoFormMutation
 
 
@@ -146,3 +148,43 @@ def test_form_field_with_choices_convert_enum():
 
     assert _type.values[1].name == "CHOICE_1"
     assert _type.values[1].value == "choice-1"
+
+
+def test_form_field_with_choices_reuse_enum():
+    choices_a = (("choice-a-0", "Choice A 0"), ("choice-a-1", "Choice A 1"))
+    enum_a = convert_choices_to_named_enum_with_descriptions("ChoicesAEnum", choices_a)
+
+    choices_b = (("choice-b-0", "Choice B 0"), ("choice-b-1", "Choice B 1"))
+    enum_b = convert_choices_to_named_enum_with_descriptions("ChoicesBEnum", choices_b)
+
+    class TestForm(forms.Form):
+        field_1 = EnumField(choices=choices_a, enum=enum_a)
+        field_2 = EnumField(choices=choices_a, enum=enum_a)
+
+        field_3 = EnumField(choices=choices_b, enum=enum_b)
+
+    class TestMutation(DjangoFormMutation):
+        class Meta:
+            form_class = TestForm
+
+    schema = graphene.Schema(mutation=TestMutation)
+
+    # Check ChoicesAEnum: field_1 and field_2
+    _type = schema.get_type("ChoicesAEnum")
+    assert _type.name == "ChoicesAEnum"
+
+    assert _type.values[0].name == "CHOICE_A_0"
+    assert _type.values[0].value == "choice-a-0"
+
+    assert _type.values[1].name == "CHOICE_A_1"
+    assert _type.values[1].value == "choice-a-1"
+
+    # Check ChoicesBEnum: field_3
+    _type = schema.get_type("ChoicesBEnum")
+    assert _type.name == "ChoicesBEnum"
+
+    assert _type.values[0].name == "CHOICE_B_0"
+    assert _type.values[0].value == "choice-b-0"
+
+    assert _type.values[1].name == "CHOICE_B_1"
+    assert _type.values[1].value == "choice-b-1"
